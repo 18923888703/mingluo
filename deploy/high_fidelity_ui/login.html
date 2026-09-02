@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#FAF9FB">
+<title>名络 · 登录交互原型</title>
+<style>
+/* finesse · register=h5 · morph=F-ambient-screen · A=ice-blue-monochrome · B=brand-lockup/body
+ * C=single-screen-layered · D=static-image · E=full-bleed-network · SOUL=6 SPECTACLE=2 DENSITY=4 */
+:root{
+  --canvas:#FAF9FB;--page:#FAF9FB;--surface:#FCFDFF;--surface-soft:#F7F8FA;
+  --brand:#0964FC;--brand-pressed:#0754D5;--brand-soft:#E7F0FF;--brand-wash:#F1F6FF;
+  --text:#171820;--text-2:#4E5969;--text-3:#86909C;--line:#E5E6EB;
+  --success:#00B42A;--danger:#F53F3F;--disabled:#C9CDD4;
+  --login-surround:#FAF9FB;--login-bg:#FAF9FB;--login-text:#1B1F28;
+  --login-muted:#69717E;--login-helper:#868D98;--login-agreement:#7E8794;
+  --login-cta:#0964FC;--login-cta-pressed:#0754D5;--login-link:#0964FC;
+  --login-secondary:#F1F2F5;--login-secondary-pressed:#E9EDF4;--login-ring:#A9B0BA;
+  --login-on-accent:#F8FBFF;--brand-focus:rgba(9,100,252,.28);
+  --brand-outline:rgba(9,100,252,.38);--brand-shadow:rgba(9,100,252,.12);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow-x:clip}
+body{margin:0;display:grid;place-items:center;padding:24px;background:var(--canvas);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit}
+button{touch-action:manipulation}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--brand-focus);outline-offset:3px}
+.device{width:min(390px,100vw);height:min(844px,100dvh);position:relative;overflow:hidden;background:var(--page);border-radius:38px;box-shadow:0 0 0 1px rgba(23,25,35,.10),0 24px 48px rgba(23,25,35,.16);isolation:isolate}
+.status-sim{position:absolute;z-index:10;top:13px;left:20px;right:20px;height:22px;display:flex;align-items:center;justify-content:space-between;color:var(--login-text);font-size:12px;font-weight:700;pointer-events:none}.status-sim__time{letter-spacing:.01em;font-variant-numeric:tabular-nums}.status-sim__right{display:flex;align-items:center;gap:9px}.status-sim__signal{width:17px;height:15px;display:flex;align-items:flex-end;gap:2px}.status-sim__signal i{display:block;width:3px;border-radius:2px;background:currentColor}.status-sim__signal i:nth-child(1){height:5px}.status-sim__signal i:nth-child(2){height:8px}.status-sim__signal i:nth-child(3){height:11px}.status-sim__signal i:nth-child(4){height:14px}.status-sim__wifi{position:relative;width:17px;height:15px;overflow:hidden}.status-sim__wifi:before,.status-sim__wifi:after{content:"";position:absolute;left:50%;border:2px solid currentColor;border-left-color:transparent;border-right-color:transparent;border-bottom-color:transparent;border-radius:50% 50% 0 0;transform:translateX(-50%)}.status-sim__wifi:before{top:1px;width:17px;height:12px}.status-sim__wifi:after{top:5px;width:9px;height:7px}.status-sim__wifi i{position:absolute;left:50%;bottom:1px;width:4px;height:4px;border-radius:50%;background:currentColor;transform:translateX(-50%)}.status-sim__battery{position:relative;width:25px;height:13px;padding:2px;border:1.5px solid currentColor;border-radius:4px}.status-sim__battery:after{content:"";position:absolute;top:3px;right:-4px;width:2px;height:5px;border-radius:0 2px 2px 0;background:currentColor}.status-sim__battery i{display:block;width:80%;height:100%;border-radius:1px;background:var(--success)}
+.status-sim__battery,.status-sim__battery i{background:transparent}
+.status-sim{background:transparent}
+.device:before{content:"";position:absolute;inset:0 0 auto;height:336px;background:linear-gradient(180deg,var(--brand-wash) 0%,var(--page) 100%);z-index:-1}
+.statusbar{height:44px;padding:14px 23px 0;display:flex;align-items:flex-start;justify-content:space-between;font-size:12px;font-weight:700;position:relative;z-index:5}
+.system{font-size:11px;letter-spacing:.4px}
+.view{position:absolute;inset:44px 0 0;padding:0 20px 42px;display:flex;flex-direction:column;overflow-y:auto;scrollbar-width:none;transition:opacity .22s cubic-bezier(.23,1,.32,1),transform .22s cubic-bezier(.23,1,.32,1)}
+.view::-webkit-scrollbar{display:none}
+.view[hidden]{display:flex;opacity:0;pointer-events:none;transform:translateX(18px)}
+.brand{display:flex;flex-direction:column;align-items:center;padding-top:48px;text-align:center}
+.brandmark{width:64px;height:64px;border-radius:12px;background:var(--brand);color:var(--surface);display:grid;place-items:center;font-size:28px;font-weight:700}
+.brand h1{font-size:28px;line-height:35px;font-weight:700;letter-spacing:-.025em;margin:16px 0 0;text-wrap:balance}
+.brand p{font-size:14px;line-height:21px;color:var(--text-2);margin:8px 0 0}
+.auth-card{margin-top:20px;padding:20px;background:var(--surface);border-radius:12px}
+.local-number{min-height:64px;padding:12px 16px;display:flex;align-items:center;gap:12px;background:var(--brand-wash);border-radius:12px}
+.local-number-icon{width:40px;height:40px;flex:none;border-radius:12px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand)}
+.local-number-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.local-number-copy{min-width:0;flex:1}.local-number-copy span{display:block;color:var(--text-3);font-size:12px;line-height:17px}.local-number-copy strong{display:block;margin-top:4px;color:var(--text);font-size:17px;line-height:24px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.verified{height:24px;padding:0 8px;border-radius:12px;display:inline-flex;align-items:center;background:var(--surface-soft);color:var(--success);font-size:12px;font-weight:500;white-space:nowrap}
+.one-click{margin-top:16px}
+.other-login{width:100%;height:48px;margin-top:12px;border:1px solid var(--brand-outline);border-radius:24px;background:var(--surface);color:var(--brand);font-size:16px;font-weight:500;cursor:pointer;transition:transform .12s,color .12s,background-color .12s}
+.other-login:active{transform:scale(.97);color:var(--brand-pressed);background:var(--brand-wash)}
+.fallback{padding-top:0}
+.fallback-note{margin:0 0 16px;color:var(--text-3);font-size:12px;line-height:17px;text-align:center}
+.subnav{height:50px;display:grid;grid-template-columns:64px minmax(0,1fr) 64px;align-items:center;margin:0 -4px}
+.subnav button{min-width:44px;height:44px;padding:0 4px;border:0;background:transparent;color:var(--brand);font-size:14px;font-weight:500;text-align:left;cursor:pointer;transition:transform .12s,color .12s}
+.subnav button:active{transform:scale(.97);color:var(--brand-pressed)}
+.subnav h1{margin:0;color:var(--text);font-size:18px;line-height:24px;font-weight:600;text-align:center}
+.subpage-intro{margin:24px 0 20px}.subpage-intro h2{margin:0;color:var(--text);font-size:28px;line-height:35px;font-weight:700}.subpage-intro p{margin:8px 0 0;color:var(--text-2);font-size:14px;line-height:21px}
+.fallback-card{padding:20px;background:var(--surface);border-radius:12px}
+.fallback-notice{margin:0 0 16px;padding:12px 16px;border-radius:12px;background:var(--surface-soft);color:var(--danger);font-size:12px;line-height:17px}
+.mode-switch{height:48px;padding:2px;display:flex;background:var(--page);border-radius:12px;margin-bottom:16px}
+.mode-switch button{min-height:44px;flex:1;border:0;border-radius:12px;background:transparent;color:var(--text-3);font-size:14px;font-weight:500;cursor:pointer;transition:background-color .16s,color .16s,transform .12s}
+.mode-switch button[aria-selected="true"]{color:var(--text);background:var(--surface)}
+.mode-switch button:active{transform:scale(.97)}
+.field{height:64px;padding:0 20px;display:flex;align-items:center;gap:8px;background:var(--surface-soft);border:1px solid transparent;border-radius:12px;transition:border-color .16s,box-shadow .16s,background-color .16s}
+.field+.field{margin-top:8px}
+.field:focus-within{background:var(--surface);border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-shadow)}
+.prefix{font-size:14px;font-weight:500;color:var(--text-2);padding-right:8px;border-right:1px solid var(--line);white-space:nowrap}
+.field input{height:100%;min-width:0;flex:1;padding:0;border:0;outline:0;background:transparent;color:var(--text);font-size:14px}
+.field input::placeholder{color:var(--text-3)}
+.inline-action{min-width:88px;min-height:44px;padding:0 8px;border:0;border-radius:12px;background:var(--brand-soft);color:var(--brand);font-size:12px;font-weight:500;cursor:pointer;font-variant-numeric:tabular-nums;transition:background-color .12s,transform .12s}
+.inline-action:active:not(:disabled){transform:scale(.97);background:var(--brand-soft)}
+.inline-action:disabled{background:transparent;color:var(--disabled);cursor:default}
+.error{min-height:24px;padding:4px 0 0;color:var(--danger);font-size:12px;line-height:17px}
+.submit{width:100%;height:48px;border:0;border-radius:24px;display:flex;align-items:center;justify-content:center;background:var(--brand);color:var(--surface);font-size:16px;font-weight:500;cursor:pointer;transition:background-color .12s,transform .12s}
+.submit:active:not(:disabled){background:var(--brand-pressed);transform:scale(.97)}
+.submit:disabled{background:var(--disabled);cursor:default}
+.submit.loading{pointer-events:none}
+.submit.loading:before{content:"";width:15px;height:15px;margin-right:8px;border:2px solid rgba(255,255,255,.45);border-top-color:var(--surface);border-radius:50%;animation:spin .7s linear infinite}
+.agreement{position:relative;display:flex;align-items:flex-start;gap:8px;margin:16px 0 0;color:var(--text-3);font-size:12px;line-height:17px;cursor:pointer}
+.agreement input{appearance:none;width:20px;height:20px;flex:none;margin:0;border:1.5px solid var(--disabled);border-radius:50%;background:var(--surface);cursor:pointer}
+.agreement input:checked{width:20px;height:20px;border-color:var(--brand);background:var(--brand)}
+.agreement input:checked:after{content:"✓";height:100%;display:grid;place-items:center;color:var(--login-on-accent);font-size:13px;font-weight:700;line-height:1}
+.agreement a{color:var(--brand);text-decoration:none}
+.toast{position:absolute;left:20px;right:20px;bottom:28px;min-height:46px;padding:10px 14px;border-radius:12px;background:rgba(23,24,32,.94);color:var(--surface);display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;z-index:20;opacity:0;pointer-events:none;transform:translateY(8px);transition:opacity .18s cubic-bezier(.23,1,.32,1),transform .18s cubic-bezier(.23,1,.32,1);box-shadow:0 8px 24px rgba(26,35,68,.12)}
+.toast.show{opacity:1;transform:translateY(0)}
+.success-view{align-items:center;text-align:center;padding-top:176px;background:linear-gradient(180deg,var(--brand-wash),var(--page) 58%)}
+.success-icon{width:64px;height:64px;border-radius:12px;background:var(--success);color:var(--surface);display:grid;place-items:center}
+.success-icon svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.success-view h2{font-size:28px;line-height:36px;letter-spacing:-.025em;margin:20px 0 0}
+.success-view p{font-size:14px;line-height:22px;color:var(--text-2);margin:8px 0 0}
+.back{width:100%;height:48px;margin-top:48px;border:1px solid var(--brand-outline);border-radius:24px;background:var(--surface);color:var(--brand);font-size:16px;font-weight:500;cursor:pointer;transition:transform .12s,background-color .12s}
+.back:active{transform:scale(.97);background:var(--brand-wash)}
+.home-indicator{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);width:130px;height:5px;border-radius:4px;background:var(--text);z-index:30}
+.consent-modal{position:absolute;inset:0;z-index:40;display:grid;place-items:center}.consent-modal[hidden]{display:none!important}.consent-backdrop{position:absolute;inset:0;background:rgba(23,24,32,.28)}.consent-sheet{position:relative;width:calc(100% - 40px);margin:0;padding:22px 20px 20px;border-radius:20px;background:var(--surface);box-shadow:0 8px 24px rgba(23,24,32,.16)}.consent-sheet h2{margin:0;color:var(--text);font-size:18px;line-height:26px;font-weight:600}.consent-sheet p{margin:8px 0 0;color:var(--text-2);font-size:13px;line-height:20px}.consent-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:18px}.consent-actions button{height:44px;border:0;border-radius:22px;font-size:14px;font-weight:500;cursor:pointer}.consent-cancel{background:var(--login-secondary);color:var(--login-text)}.consent-confirm{background:var(--login-cta);color:var(--login-on-accent)}.consent-actions button:active{transform:scale(.975)}
+[hidden]{display:none!important}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:430px){body{padding:0;background:var(--page)}.device{width:100vw;height:100dvh;border-radius:0;box-shadow:none}.view{padding-left:16px;padding-right:16px}}
+@media(prefers-reduced-motion:reduce){.view,.toast,.submit,.mode-switch button,.back{transition:none}.submit.loading:before{animation:none}}
+
+/* Design-target login screen: artwork and live UI remain separate layers. */
+body{
+  padding:0;
+  overflow:hidden;
+  background:var(--login-surround);
+}
+.device{
+  width:min(390px,100vw);
+  height:min(844px,100dvh);
+  border-radius:0;
+  background:var(--login-bg);
+  box-shadow:0 18px 60px rgba(57,78,122,.16);
+}
+.device:before,.statusbar,.home-indicator{display:none}
+.view{
+  inset:0;
+  padding:0;
+}
+#login-view{
+  overflow:hidden;
+  background:var(--login-bg);
+}
+.login-stage{
+  position:relative;
+  flex:none;
+  width:100%;
+  min-height:844px;
+  overflow:hidden;
+  background:var(--login-bg) url("../icon/login_bg.jpg") top center/100% auto no-repeat;
+}
+.login-brand{
+  position:absolute;
+  z-index:4;
+  top:64px;
+  left:50%;
+  transform:translateX(-50%);
+}
+.login-brand__image{
+  display:block;
+  width:135px;
+  height:auto;
+  object-fit:contain;
+  user-select:none;
+  -webkit-user-drag:none;
+}
+.login-copy{
+  position:absolute;
+  z-index:4;
+  top:499px;
+  left:20px;
+  right:20px;
+  text-align:center;
+}
+.login-number{
+  margin:0;
+  color:var(--login-text);
+  font-size:27px;
+  font-weight:600;
+  line-height:36px;
+  letter-spacing:.02em;
+  font-variant-numeric:tabular-nums;
+}
+.login-carrier{
+  margin:8px 0 0;
+  color:var(--login-helper);
+  font-size:13px;
+  font-weight:400;
+  line-height:20px;
+}
+.login-actions{
+  position:absolute;
+  z-index:5;
+  top:576px;
+  left:clamp(24px,9.23vw,36px);
+  right:clamp(24px,9.23vw,36px);
+}
+.login-actions.is-loading{pointer-events:none}
+#login-view.carrier-unavailable .login-copy{display:none}
+#login-view.carrier-unavailable .login-actions .one-click{display:none}
+#login-view.carrier-unavailable .login-actions .other-login{margin-top:0}
+#login-view .submit,
+#login-view .other-login{
+  width:100%;
+  height:48px;
+  border-radius:24px;
+  font-size:16px;
+  font-weight:500;
+  line-height:48px;
+}
+#login-view .submit{
+  margin:0;
+  border:0;
+  background:var(--login-cta);
+  color:var(--login-on-accent);
+  box-shadow:none;
+}
+#login-view .submit:not(:disabled):active{
+  background:var(--login-cta-pressed);
+  transform:scale(.975);
+}
+#login-view .submit:disabled{
+  background:var(--login-cta);
+  color:var(--login-on-accent);
+  opacity:1;
+}
+#login-view .other-login{
+  margin-top:14px;
+  border:0;
+  background:var(--login-secondary);
+  color:var(--login-text);
+  box-shadow:none;
+}
+#login-view .other-login:active{
+  background:var(--login-secondary-pressed);
+  color:var(--login-text);
+  transform:scale(.975);
+}
+#login-view .agreement{
+  margin:16px 0 0;
+  align-items:flex-start;
+  gap:7px;
+  color:var(--login-agreement);
+  font-size:11px;
+  line-height:17px;
+  letter-spacing:-.01em;
+}
+#login-view .agreement input{
+  width:16px;
+  height:16px;
+  margin-top:1px;
+  border-color:var(--login-ring);
+  background:var(--login-bg);
+}
+#login-view .agreement a{color:var(--login-link)}
+#fallback-view{
+  inset:0;
+  padding:20px 20px 42px;
+  background:var(--page);
+}
+.success-view{
+  inset:0;
+  padding:176px 20px 42px;
+}
+@media(max-height:760px){
+  #login-view{overflow-y:auto}
+  .login-stage{transform:scale(.9);transform-origin:top center;margin-bottom:-84px}
+}
+@media(min-width:560px){
+  .device{width:390px;height:min(844px,94vh)}
+}
+/* Final native furniture alignment. */
+.status-sim{top:0;height:44px}
+.login-copy{top:479px}
+.login-actions{top:556px}
+.back-icon{display:block;width:24px;height:24px;object-fit:contain}
+.agreement input,.agreement input:checked{appearance:none;width:16px!important;height:16px!important;min-width:16px;max-width:16px;min-height:16px;max-height:16px;box-sizing:border-box;flex:0 0 16px}
+.agreement input:checked{border-color:#0964FC!important;background:#0964FC!important}
+.agreement input:checked:after{content:"✓";height:100%;display:grid;place-items:center;color:#F8FBFF;font-size:10px;font-weight:700;line-height:1}
+</style>
+</head>
+<body>
+<main class="device" aria-label="名络登录交互原型">
+  <div class="status-sim" aria-label="模拟状态栏，当前电量 80%"><span class="status-sim__time">14:44</span><span class="status-sim__right"><span class="status-sim__signal" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="status-sim__wifi" aria-hidden="true"><i></i></span><span class="status-sim__battery" aria-hidden="true"><i></i></span></span></div>
+
+  <section class="view" id="login-view" aria-label="名络登录">
+    <div class="login-stage">
+      <div class="login-brand">
+        <img class="login-brand__image" src="../icon/LOGOpng.png" width="306" height="156" alt="名络，连接每一段重要关系">
+      </div>
+
+      <div class="login-copy" aria-label="已识别本机号码 138 尾号 8000">
+        <p class="login-number">138 **** 8000</p>
+        <p class="login-carrier">认证服务由中国移动提供</p>
+      </div>
+
+      <div class="login-actions">
+        <button class="submit one-click" id="one-click" type="button">本机号码一键登录</button>
+        <button class="other-login" id="other-login" type="button" aria-controls="fallback-view">其他手机号登录</button>
+        <label class="agreement">
+          <input id="agreement" type="checkbox">
+          <span>我已阅读并同意 <a href="#" data-policy="用户协议">《用户协议》</a> <a href="#" data-policy="隐私政策">《隐私政策》</a> 及运营商认证服务条款</span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="fallback-view" hidden aria-labelledby="fallback-title">
+    <nav class="subnav" aria-label="其他方式登录导航">
+      <button id="back-one-click" type="button" aria-label="返回登录页"><img class="back-icon" src="../icon/返回.svg" alt=""></button>
+      <h1>其他手机号登录</h1>
+      <span aria-hidden="true"></span>
+    </nav>
+
+    <div class="subpage-intro">
+      <h2 id="fallback-title">验证手机号</h2>
+      <p>输入其他手机号，获取验证码完成登录。</p>
+    </div>
+
+    <div class="fallback-card">
+      <div class="fallback" id="fallback">
+        <div class="fallback-notice" id="fallback-notice" hidden role="alert" aria-live="assertive"></div>
+        <div class="mode-switch" role="tablist" aria-label="其他登录方式">
+          <button type="button" role="tab" aria-selected="true" data-mode="code">验证码登录</button>
+          <button type="button" role="tab" aria-selected="false" data-mode="password">密码登录</button>
+        </div>
+
+        <form id="login-form" novalidate>
+          <label class="field">
+            <span class="prefix">+86</span>
+            <input id="phone" name="phone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="请输入手机号" aria-label="手机号">
+          </label>
+
+          <label class="field" id="code-field">
+            <input id="code" name="code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="请输入 6 位验证码" aria-label="验证码">
+            <button class="inline-action" id="send-code" type="button" disabled>获取验证码</button>
+          </label>
+
+          <label class="field" id="password-field" hidden>
+            <input id="password" name="password" type="password" minlength="6" autocomplete="current-password" placeholder="请输入登录密码" aria-label="登录密码">
+            <button class="inline-action" id="toggle-password" type="button">显示</button>
+          </label>
+
+          <div class="error" id="error" role="alert" aria-live="polite"></div>
+          <button class="submit" id="submit" type="submit" disabled>登录</button>
+
+          <label class="agreement">
+            <input id="fallback-agreement" type="checkbox">
+            <span>我已阅读并同意 <a href="#" data-policy="用户协议">《用户协议》</a> 与 <a href="#" data-policy="隐私政策">《隐私政策》</a></span>
+          </label>
+        </form>
+      </div>
+    </div>
+
+  </section>
+
+  <section class="view success-view" id="success-view" hidden aria-labelledby="success-title">
+    <div class="success-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"></path></svg></div>
+    <h2 id="success-title">登录成功</h2>
+    <p id="success-detail">身份验证已完成<br>此原型不会进入其他业务页面</p>
+    <button class="back" id="back-login" type="button">返回登录页</button>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="consent-modal" id="consent-modal" hidden>
+    <div class="consent-backdrop" data-consent-cancel></div>
+    <section class="consent-sheet" role="dialog" aria-modal="true" aria-labelledby="consent-title" aria-describedby="consent-description">
+      <h2 id="consent-title">请先同意相关协议</h2>
+      <p id="consent-description">登录前需要阅读并同意《用户协议》《隐私政策》及运营商认证服务条款。</p>
+      <div class="consent-actions"><button class="consent-cancel" id="consent-cancel" type="button">暂不同意</button><button class="consent-confirm" id="consent-confirm" type="button">同意并继续</button></div>
+    </section>
+  </div>
+</main>
+
+<script>
+(() => {
+  const q = selector => document.querySelector(selector);
+  const loginView = q('#login-view');
+  const fallbackView = q('#fallback-view');
+  const successView = q('#success-view');
+  const form = q('#login-form');
+  const oneClick = q('#one-click');
+  const otherLogin = q('#other-login');
+  const loginActions = q('.login-actions');
+  const phone = q('#phone');
+  const code = q('#code');
+  const password = q('#password');
+  const agreement = q('#agreement');
+  const fallbackAgreement = q('#fallback-agreement');
+  const codeField = q('#code-field');
+  const passwordField = q('#password-field');
+  const sendCode = q('#send-code');
+  const submit = q('#submit');
+  const error = q('#error');
+  const fallbackNotice = q('#fallback-notice');
+  const toast = q('#toast');
+  const successDetail = q('#success-detail');
+  const consentModal = q('#consent-modal');
+  const consentConfirm = q('#consent-confirm');
+  const consentCancel = q('#consent-cancel');
+  const simulateCarrierFailure = new URLSearchParams(window.location.search).get('carrier') === 'fail';
+  let mode = 'code';
+  let timer = null;
+  let pendingConsentAction = null;
+  let consentTrigger = null;
+
+  const validPhone = () => /^1\d{10}$/.test(phone.value);
+  const validCredential = () => mode === 'code' ? /^\d{6}$/.test(code.value) : password.value.length >= 6;
+  const update = () => {
+    phone.value = phone.value.replace(/\D/g, '').slice(0, 11);
+    code.value = code.value.replace(/\D/g, '').slice(0, 6);
+    sendCode.disabled = !validPhone() || Boolean(timer);
+    submit.disabled = !(validPhone() && validCredential() && fallbackAgreement.checked);
+    if (error.textContent && validPhone()) error.textContent = '';
+    if (phone.value && !fallbackNotice.hidden) fallbackNotice.hidden = true;
+  };
+  const showToast = message => {
+    toast.textContent = message;
+    toast.classList.add('show');
+    window.clearTimeout(showToast.timeout);
+    showToast.timeout = window.setTimeout(() => toast.classList.remove('show'), 2200);
+  };
+  const closeConsent = () => {
+    consentModal.hidden = true;
+    pendingConsentAction = null;
+    consentTrigger?.focus();
+  };
+  const requestConsent = (action, trigger) => {
+    if (agreement.checked) { action(); return; }
+    pendingConsentAction = action;
+    consentTrigger = trigger;
+    consentModal.hidden = false;
+    consentConfirm.focus();
+  };
+  const completeLogin = (button, loadingText) => {
+    const lockTarget = button.closest('.login-actions') || button.closest('.fallback-card');
+    lockTarget?.classList.add('is-loading');
+    button.classList.add('loading');
+    button.textContent = loadingText;
+    window.setTimeout(() => {
+      lockTarget?.classList.remove('is-loading');
+      button.classList.remove('loading');
+      button.textContent = button === oneClick ? '本机号码一键登录' : '登录';
+      window.location.href = 'login-sync.html?source=local';
+    }, 700);
+  };
+  const openFallback = (message = '') => {
+    const params = new URLSearchParams();
+    if (message) params.set('reason', 'carrier-fail');
+    if (agreement.checked) params.set('agreed', '1');
+    window.location.href = `login-phone.html${params.toString() ? `?${params}` : ''}`;
+  };
+
+  const performOneClick = () => {
+    if (simulateCarrierFailure) {
+      loginActions.classList.add('is-loading');
+      oneClick.classList.add('loading');
+      oneClick.textContent = '正在验证本机号码';
+      window.setTimeout(() => {
+        loginActions.classList.remove('is-loading');
+        oneClick.classList.remove('loading');
+        oneClick.textContent = '本机号码一键登录';
+        openFallback('未获取到本机号码，请使用其他手机号登录');
+      }, 700);
+      return;
+    }
+    completeLogin(oneClick, '正在验证本机号码');
+  };
+  oneClick.addEventListener('click', () => requestConsent(performOneClick, oneClick));
+
+  otherLogin.addEventListener('click', () => {
+    openFallback();
+  });
+
+  consentConfirm.addEventListener('click', () => {
+    agreement.checked = true;
+    update();
+    const action = pendingConsentAction;
+    consentModal.hidden = true;
+    pendingConsentAction = null;
+    action?.();
+  });
+  consentCancel.addEventListener('click', closeConsent);
+  q('[data-consent-cancel]').addEventListener('click', closeConsent);
+
+  if (simulateCarrierFailure) loginView.classList.add('carrier-unavailable');
+
+  q('#back-one-click').addEventListener('click', () => {
+    fallbackView.hidden = true;
+    loginView.hidden = false;
+    fallbackNotice.hidden = true;
+    otherLogin.focus();
+  });
+
+  document.querySelectorAll('[data-mode]').forEach(tab => tab.addEventListener('click', () => {
+    mode = tab.dataset.mode;
+    document.querySelectorAll('[data-mode]').forEach(item => item.setAttribute('aria-selected', String(item === tab)));
+    codeField.hidden = mode !== 'code';
+    passwordField.hidden = mode === 'code';
+    error.textContent = '';
+    update();
+    (mode === 'code' ? code : password).focus();
+  }));
+
+  [phone, code, password, agreement, fallbackAgreement].forEach(control => control.addEventListener('input', update));
+  agreement.addEventListener('change', update);
+  fallbackAgreement.addEventListener('change', update);
+
+  sendCode.addEventListener('click', () => {
+    if (!validPhone()) { error.textContent = '请输入正确的 11 位手机号'; return; }
+    let remaining = 60;
+    sendCode.textContent = `${remaining}s 后重发`;
+    sendCode.disabled = true;
+    timer = window.setInterval(() => {
+      remaining -= 1;
+      sendCode.textContent = remaining ? `${remaining}s 后重发` : '重新获取';
+      if (!remaining) { window.clearInterval(timer); timer = null; update(); }
+    }, 1000);
+    showToast('验证码已发送，请注意查收');
+  });
+
+  q('#toggle-password').addEventListener('click', event => {
+    password.type = password.type === 'password' ? 'text' : 'password';
+    event.currentTarget.textContent = password.type === 'password' ? '显示' : '隐藏';
+  });
+
+  document.querySelectorAll('[data-policy]').forEach(link => link.addEventListener('click', event => {
+    event.preventDefault();
+    showToast(`${link.dataset.policy}仅作登录原型入口展示`);
+  }));
+
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    if (!validPhone()) { error.textContent = '请输入正确的 11 位手机号'; phone.focus(); return; }
+    if (!fallbackAgreement.checked) { error.textContent = '请先同意用户协议与隐私政策'; return; }
+    if (!validCredential()) { error.textContent = mode === 'code' ? '请输入 6 位验证码' : '密码至少需要 6 位'; return; }
+    if (mode === 'code' && code.value === '000000') { error.textContent = '验证码错误，请重新输入'; code.focus(); return; }
+    completeLogin(submit, '正在登录');
+  });
+
+  q('#back-login').addEventListener('click', () => {
+    successView.hidden = true;
+    loginView.hidden = false;
+    fallbackView.hidden = true;
+    code.value = '';
+    password.value = '';
+    agreement.checked = false;
+    fallbackAgreement.checked = false;
+    fallbackNotice.hidden = true;
+    error.textContent = '';
+    update();
+    oneClick.focus();
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>
