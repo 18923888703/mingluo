@@ -55,16 +55,60 @@ const fileUrl = (query = '', hash = '') =>
     await page.close();
   });
 
+  await run('所有返回动作会立即隐藏离开的视图', async () => {
+    const page = await browser.newPage({ viewport: { width: 375, height: 812 } });
+    await page.goto(fileUrl('', '#screen-02'));
+    const screenState = await page.locator('#screen-02 [data-back]').evaluate(button => {
+      button.click();
+      const previous = document.querySelector('#screen-02');
+      return {
+        active: previous.classList.contains('active'),
+        behind: previous.classList.contains('behind'),
+        visibility: getComputedStyle(previous).visibility
+      };
+    });
+    assert.deepStrictEqual(screenState, { active: false, behind: false, visibility: 'hidden' });
+
+    await page.click('#open-messages');
+    await page.click('[data-message="sync"]');
+    const messageDetailVisibility = await page.locator('#close-message-detail').evaluate(button => {
+      button.click();
+      return getComputedStyle(document.querySelector('#message-detail')).visibility;
+    });
+    assert.strictEqual(messageDetailVisibility, 'hidden');
+    const messageSubviewVisibility = await page.locator('#close-messages').evaluate(button => {
+      button.click();
+      return getComputedStyle(document.querySelector('#message-subview')).visibility;
+    });
+    assert.strictEqual(messageSubviewVisibility, 'hidden');
+
+    await page.goto(fileUrl('', '#screen-08'));
+    await page.click('#merge-history-entry');
+    const featureVisibility = await page.locator('#close-my-feature').evaluate(button => {
+      button.click();
+      return getComputedStyle(document.querySelector('#my-feature-subview')).visibility;
+    });
+    assert.strictEqual(featureVisibility, 'hidden');
+    await page.click('#settings-entry');
+    const settingsVisibility = await page.locator('#close-settings').evaluate(button => {
+      button.click();
+      return getComputedStyle(document.querySelector('#settings-subview')).visibility;
+    });
+    assert.strictEqual(settingsVisibility, 'hidden');
+    await page.close();
+  });
+
   await run('所有页面状态栏与导航栏随滚动同步渐变', async () => {
     const page = await browser.newPage({ viewport: { width: 375, height: 812 } });
     for (let i = 1; i <= 8; i += 1) {
       const id = `screen-${String(i).padStart(2, '0')}`;
       await page.goto(fileUrl('', `#${id}`));
       const scroll = page.locator(`#${id} > .scroll`);
-      assert.strictEqual(await page.locator('.statusbar').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(255, 255, 255, 0)');
+      assert(await page.locator('.statusbar').evaluate(el => /rgba\([^)]*,\s*0\)$/.test(getComputedStyle(el).backgroundColor)));
+      assert.strictEqual(await page.locator('.statusbar').evaluate(el => getComputedStyle(el).backgroundImage), 'none');
       await scroll.evaluate(el => {
         el.style.paddingBottom = '1200px';
-        el.scrollTop = 80;
+        el.scrollTop = 160;
         el.dispatchEvent(new Event('scroll'));
       });
       await page.waitForTimeout(30);
@@ -73,6 +117,12 @@ const fileUrl = (query = '', hash = '') =>
       if (await toolbar.count()) {
         assert.strictEqual(await toolbar.evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(255, 255, 255)');
       }
+      await scroll.evaluate(el => {
+        el.scrollTop = 0;
+        el.dispatchEvent(new Event('scroll'));
+      });
+      assert(await page.locator('.statusbar').evaluate(el => /rgba\([^)]*,\s*0\)$/.test(getComputedStyle(el).backgroundColor)));
+      assert.strictEqual(await page.locator('.statusbar').evaluate(el => getComputedStyle(el).backgroundImage), 'none');
     }
     await page.close();
   });
@@ -121,6 +171,8 @@ const fileUrl = (query = '', hash = '') =>
     await page.click('[data-mode="edit"]');
     assert(await page.locator('#delete-contact').isVisible());
     assert.strictEqual(await page.locator('#delete-contact').evaluate(el => getComputedStyle(el).color), 'rgb(245, 63, 63)');
+    const formActionWidths = await page.locator('#screen-03>.actionbar .button-row > *').evaluateAll(items => items.map(item => item.getBoundingClientRect().width));
+    assert(Math.abs(formActionWidths[0] - formActionWidths[1]) < 0.5);
     await page.click('#delete-contact');
     assert.strictEqual(await page.locator('#dialog-title').innerText(), '确认删除该联系人？');
     await page.click('#dialog-confirm');
@@ -132,6 +184,43 @@ const fileUrl = (query = '', hash = '') =>
   await run('详情快捷操作、滚动导航和跳过返回', async () => {
     const page = await browser.newPage({ viewport: { width: 375, height: 812 } });
     await page.goto(fileUrl('', '#screen-02'));
+    const quickLayout = await page.locator('#screen-02 .quick-grid').evaluate(grid => {
+      const gridRect = grid.getBoundingClientRect();
+      const gridStyle = getComputedStyle(grid);
+      const heroRect = document.querySelector('#screen-02 .hero-profile').getBoundingClientRect();
+      const actions = [...grid.querySelectorAll('.quick-action')];
+      return {
+        heroGap: gridRect.top - heroRect.bottom,
+        paddingTop: gridStyle.paddingTop,
+        paddingBottom: gridStyle.paddingBottom,
+        marginBottom: gridStyle.marginBottom,
+        columnGap: gridStyle.columnGap,
+        columns: gridStyle.gridTemplateColumns.split(' ').map(parseFloat),
+        actions: actions.map(action => {
+          const actionRect = action.getBoundingClientRect();
+          const labelRect = action.querySelector('span').getBoundingClientRect();
+          const style = getComputedStyle(action);
+          return {
+            display: style.display,
+            justifyItems: style.justifyItems,
+            textAlign: style.textAlign,
+            labelOffset: Math.abs((labelRect.left + labelRect.width / 2) - (actionRect.left + actionRect.width / 2))
+          };
+        })
+      };
+    });
+    assert(Math.abs(quickLayout.heroGap - 20) < 0.6);
+    assert.strictEqual(quickLayout.paddingTop, '8px');
+    assert.strictEqual(quickLayout.paddingBottom, '8px');
+    assert.strictEqual(quickLayout.marginBottom, '12px');
+    assert.strictEqual(quickLayout.columnGap, '0px');
+    assert(quickLayout.columns.every(width => Math.abs(width - quickLayout.columns[0]) < 0.6));
+    quickLayout.actions.forEach(action => {
+      assert.strictEqual(action.display, 'grid');
+      assert.strictEqual(action.justifyItems, 'center');
+      assert.strictEqual(action.textAlign, 'center');
+      assert(action.labelOffset < 0.6);
+    });
     const navBefore = await page.locator('#screen-02 .navbar').evaluate(el => getComputedStyle(el).backgroundColor);
     await page.locator('#screen-02 .scroll').evaluate(el => {
       el.scrollTop = 80;
@@ -212,6 +301,17 @@ const fileUrl = (query = '', hash = '') =>
     assert.strictEqual(await page.locator('.phone-input').getAttribute('placeholder'), '输入电话号码');
     assert.strictEqual(await page.locator('#delete-contact').isVisible(), false);
     assert.strictEqual(await page.locator('.phone-card-head .field-label').count(), 0);
+    assert.strictEqual(await page.locator('.phone-entry-card .phone-type-trigger').count(), 1);
+    assert.strictEqual(await page.locator('.phone-type-trigger').evaluate(el => getComputedStyle(el).fontSize), '14px');
+    await page.click('.phone-type-trigger');
+    assert(await page.locator('.phone-type-menu').isVisible());
+    assert.strictEqual(await page.locator('.phone-type-option').count(), 2);
+    assert.strictEqual(await page.locator('.phone-type-menu').evaluate(el => getComputedStyle(el).gap), '12px');
+    await page.click('.phone-type-option[data-value="work"]');
+    assert.strictEqual(await page.locator('.phone-type-label').innerText(), '工作');
+    assert.strictEqual(await page.locator('.phone-card-list').evaluate(el => getComputedStyle(el).marginBottom), '12px');
+    assert.strictEqual(await page.locator('.phone-card-head').evaluate(el => getComputedStyle(el).marginBottom), '7px');
+    assert.strictEqual(await page.locator('#screen-03 .field-label').first().evaluate(el => getComputedStyle(el).fontSize), '14px');
     await page.fill('#name-input', '测试联系人');
     await page.fill('.phone-input', '13800138000');
     await page.click('#add-phone');
@@ -283,10 +383,18 @@ const fileUrl = (query = '', hash = '') =>
     assert.deepStrictEqual(tabMetrics[0], tabMetrics[1]);
     assert.strictEqual(await page.locator('#screen-01 .tab[data-go="screen-08"]').evaluate(el => getComputedStyle(el, '::before').width), '33px');
     const lowerEntries = await page.locator('#settings-content').innerText();
-    assert(!lowerEntries.includes('合并记录'));
+    assert(lowerEntries.includes('合并记录'));
     assert(!lowerEntries.includes('分享管理'));
     assert(!lowerEntries.includes('回收站'));
-    for (const [type, title] of [['merge', '合并记录'], ['share', '分享管理'], ['trash', '回收站']]) {
+    await page.click('#screen-08 .metric[data-go="screen-04"]');
+    assert(await page.locator('#screen-04').evaluate(el => el.classList.contains('active')));
+    await page.click('#screen-04 [data-back]');
+    assert(await page.locator('#screen-08').evaluate(el => el.classList.contains('active')));
+    await page.click('#merge-history-entry');
+    assert(await page.locator('#my-feature-subview').evaluate(el => el.classList.contains('open')));
+    assert.strictEqual((await page.locator('#my-feature-title').textContent()).trim(), '合并记录');
+    await page.click('#close-my-feature');
+    for (const [type, title] of [['share', '分享管理'], ['trash', '回收站']]) {
       await page.click(`[data-my-view="${type}"]`);
       assert(await page.locator('#my-feature-subview').evaluate(el => el.classList.contains('open')));
       assert.strictEqual((await page.locator('#my-feature-title').textContent()).trim(), title);
@@ -313,16 +421,44 @@ const fileUrl = (query = '', hash = '') =>
       }
       await page.click('#close-my-feature');
     }
-    assert.strictEqual(await page.locator('#settings-content .settings-master-card').count(), 3);
-    assert.strictEqual(await page.locator('#settings-content .settings-master-card > .setting-row').count(), 3);
+    assert.strictEqual(await page.locator('#settings-content .settings-master-card').count(), 1);
+    assert.strictEqual(await page.locator('#settings-content .settings-master-card > .setting-row').count(), 4);
     assert.deepStrictEqual(await page.locator('#settings-content .setting-icon img').evaluateAll(images => images.map(image => image.getAttribute('src'))), [
       '../icon/contact-sync.svg',
+      '../icon/合并记录.png',
       '../icon/duplicate-reminder.svg',
       '../icon/settings.svg'
     ]);
-    assert.strictEqual(await page.locator('#settings-content .setting-icon img').first().evaluate(el => getComputedStyle(el).width), '36px');
+    assert.strictEqual(await page.locator('#settings-content .setting-icon img').first().evaluate(el => getComputedStyle(el).width), '25px');
     assert.strictEqual(await page.locator('#sync-setting .value').evaluate(el => getComputedStyle(el).fontSize), '14px');
-    assert.deepStrictEqual(await page.locator('#screen-08 .metric').first().evaluate(metric => [...metric.children].map(child => getComputedStyle(child).order)), ['2', '1', '3']);
+    assert.strictEqual(await page.locator('#screen-08 .metric .metric-icon').count(), 3);
+    assert.strictEqual(await page.locator('#screen-08 .metric .metric-icon img').count(), 3);
+    assert.strictEqual(await page.locator('#screen-08 .metric b').count(), 0);
+    assert.strictEqual(await page.locator('#screen-08 .metric small').count(), 0);
+    assert.notStrictEqual(await page.locator('#screen-08 .my-profile-art').evaluate(el => getComputedStyle(el).display), 'none');
+    assert.strictEqual(await page.locator('#screen-08 .my-profile-card .avatar').evaluate(el => getComputedStyle(el).width), '68px');
+    assert.strictEqual(await page.locator('#screen-08 .my-profile-card strong').evaluate(el => getComputedStyle(el).fontSize), '22px');
+    assert.strictEqual(await page.locator('#screen-08 .my-profile-card .job-tag').innerText(), '商务经理');
+    assert.strictEqual(await page.locator('#screen-08 .my-share-card').getAttribute('data-go'), 'screen-07');
+    await page.click('#screen-08 .my-share-card');
+    assert(await page.locator('#screen-07').evaluate(el => el.classList.contains('active')));
+    assert.strictEqual((await page.locator('#screen-07 .share-card-name').textContent()).trim(), '林经理');
+    assert.strictEqual((await page.locator('#screen-07 .share-card-role').textContent()).trim(), '商务经理');
+    assert.strictEqual(await page.locator('#screen-07 .share-card-company').innerText(), '山西龙采科技有限公司');
+    await page.click('#card-share-action');
+    assert.strictEqual(await page.locator('#share-poster-overlay').getAttribute('aria-hidden'), 'false');
+    assert.strictEqual(await page.locator('#share-poster-card').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(0, 94, 254)');
+    assert.strictEqual(await page.locator('#share-poster-card').evaluate(el => getComputedStyle(el).boxShadow), 'none');
+    assert.strictEqual(await page.locator('#share-poster-dialog h2').count(), 0);
+    assert.strictEqual(await page.locator('#close-share-poster').count(), 0);
+    assert.deepStrictEqual(await page.locator('.share-poster-action').evaluateAll(actions => actions.map(action => action.innerText.trim())), ['复制链接', '分享微信', '保存图片']);
+    assert.strictEqual(await page.locator('#poster-copy-link img').getAttribute('src'), '../icon/复制链接.svg');
+    assert.strictEqual(await page.locator('#poster-share-wechat img').getAttribute('src'), '../icon/微信.svg');
+    await page.locator('#share-poster-overlay').evaluate(el => el.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+    assert.strictEqual(await page.locator('#share-poster-overlay').getAttribute('aria-hidden'), 'true');
+    await page.click('#screen-07 [data-back]');
+    assert.strictEqual(await page.locator('#screen-08 .metric').first().evaluate(el => getComputedStyle(el).height), '100px');
+    assert.strictEqual(await page.locator('#screen-08 .metric').first().evaluate(el => getComputedStyle(el).textAlign), 'center');
     assert(!(await page.locator('#settings-content').innerText()).includes('数据与同步'));
     assert(!(await page.locator('#settings-content').innerText()).includes('账户与支持'));
     assert(!(await page.locator('#settings-content').innerText()).includes('通讯录权限'));
@@ -343,6 +479,8 @@ const fileUrl = (query = '', hash = '') =>
     assert(await page.locator('#settings-subview').evaluate(el => el.classList.contains('open')));
     assert(!(await page.locator('#settings-panel-content').innerText()).includes('通讯录权限'));
     assert.strictEqual(await page.locator('#settings-panel-content .setting-icon:visible').count(), 0);
+    assert.strictEqual(await page.locator('#settings-panel-content .setting-copy small:visible').count(), 0);
+    assert.strictEqual(await page.locator('#settings-panel-content .setting-row > .chevron:visible').count(), 3);
     assert.strictEqual(await page.locator('#settings-panel-content .account-card').count(), 2);
     await page.click('#logout-account');
     assert.strictEqual(await page.locator('#dialog-title').innerText(), '确认退出账号？');
