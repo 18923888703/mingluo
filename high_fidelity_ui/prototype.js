@@ -167,6 +167,10 @@ const contacts = [
 let activeContact = defaultContact;
 let hasCreatedContact = false;
 
+function formatContactListMeta(contact) {
+  return [contact.title, contact.company].filter(Boolean).join(' · ');
+}
+
 function renderHome(filter = '') {
   const root = byId('home-content');
   if (fixture === 'loading') {
@@ -188,7 +192,7 @@ function renderHome(filter = '') {
     : contacts.filter(contact => [contact.name, contact.phone, contact.company, contact.title].join('').toLowerCase().includes(filter.toLowerCase()));
   let html = `${banner}<div class="flat-card notice"><span class="notice-icon warn" aria-hidden="true"><img src="../icon/排重.png" alt=""></span><span class="notice-copy"><strong>发现 38 位可能重复联系人</strong><span>核对后合并，信息不会丢失</span></span><button class="text-button" data-go="screen-04">去处理</button></div>`;
   if (!list.length) {
-    root.innerHTML = html + `<div class="state-panel"><div class="state-icon">${icon('users')}</div><h2>${filter ? '没有匹配的联系人' : '还没有联系人'}</h2><p>${filter ? '换个姓名、号码或公司试试' : '点击右上角添加第一位联系人'}</p></div>`;
+    root.innerHTML = html + `<div class="state-panel"><div class="state-icon">${icon('users')}</div><h2>${filter ? '没有匹配的联系人' : '还没有联系人'}</h2><p>${filter ? '换个姓名、号码或公司试试' : '点击底部“创建”添加第一位联系人'}</p></div>`;
     return;
   }
   let lastLetter = '';
@@ -201,7 +205,7 @@ function renderHome(filter = '') {
       groupOpen = true;
       html += `<div class="contact-group" data-letter="${lastLetter}"><div class="letter">${lastLetter}</div><div class="contact-list">`;
     }
-    html += `<button class="contact-row" data-contact-id="${contact.id}"><span class="avatar">${contact.name[0]}</span><span class="contact-main"><span class="contact-name">${contact.name}</span><span class="contact-meta">${contact.phone} · ${contact.company}</span></span><svg class="chevron"><use href="#i-chevron"/></svg></button>`;
+    html += `<button class="contact-row" data-contact-id="${contact.id}"><span class="avatar">${contact.name[0]}</span><span class="contact-main"><span class="contact-name">${contact.name}</span><span class="contact-meta">${formatContactListMeta(contact)}</span></span><svg class="chevron"><use href="#i-chevron"/></svg></button>`;
   });
   root.innerHTML = html + (groupOpen ? '</div></div>' : '') + '</div>';
 }
@@ -1296,10 +1300,9 @@ function syncScrollChrome(scroll) {
   device.style.setProperty('--scroll-progress', progress.toFixed(3));
   device.classList.toggle('is-scrolled', top > 0);
   scroll?.closest('.screen')?.classList.toggle('is-scrolled', top > 0);
-  const chromeColor = top > 0 ? `rgba(255,255,255,${progress.toFixed(3)})` : 'transparent';
   document.querySelectorAll('.statusbar, .navbar').forEach(chrome => {
     chrome.style.removeProperty('background');
-    chrome.style.setProperty('background-color', chromeColor, 'important');
+    chrome.style.setProperty('background-color', chrome.classList.contains('statusbar') ? 'transparent' : (top > 0 ? `rgba(255,255,255,${progress.toFixed(3)})` : 'transparent'), 'important');
     chrome.style.setProperty('background-image', 'none', 'important');
     chrome.style.setProperty('transition', 'none', 'important');
   });
